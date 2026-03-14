@@ -5,6 +5,6 @@ import { solidStart } from "@solidjs/start/config";
 export default defineConfig({
   plugins: [
     solidStart(),
-    nitro({ preset: "cloudflare-pages" })
+    nitro({ preset: "netlify" })
   ]
 });
