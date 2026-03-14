@@ -1,0 +1,32 @@
+{
+  "src/entry-server.tsx": {
+    "file": "entry-server.js",
+    "name": "entry-server",
+    "src": "src/entry-server.tsx",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/routes/[...404].tsx?pick=default&pick=$css",
+      "src/routes/[...404].tsx?pick=default&pick=$css",
+      "src/routes/index.tsx?pick=default&pick=$css",
+      "src/routes/index.tsx?pick=default&pick=$css"
+    ],
+    "css": [
+      "_build/assets/entry-server-zLepqUvR.css"
+    ]
+  },
+  "src/routes/[...404].tsx?pick=default&pick=$css": {
+    "file": "_build/assets/_...404_-DayZDE5a.js",
+    "name": "_...404_",
+    "src": "src/routes/[...404].tsx?pick=default&pick=$css",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/entry-server.tsx"
+    ]
+  },
+  "src/routes/index.tsx?pick=default&pick=$css": {
+    "file": "_build/assets/index-BEVwKe0w.js",
+    "name": "index",
+    "src": "src/routes/index.tsx?pick=default&pick=$css",
+    "isDynamicEntry": true
+  }
+}

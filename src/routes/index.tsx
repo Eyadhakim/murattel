@@ -53,9 +53,11 @@ export default function QuranPlayer() {
     const res = await fetch(`https://mp3quran.net/api/v3/ayat_timing?surah=${surahId}&read=${mushafId}`);
     const data = await res.json();
     const verses = quran[String(surahId) as keyof typeof quran]
-    console.log(data)
     const ayat = verses.map(v => {
-      const durationApiAyah = data.find((a: any) => a.ayah === v.verse);
+      const durationApiAyah = data.find(a => {
+        if (data[0].ayah + 1 === verses[0].verse && surahId === 1) return a.ayah + 1 === v.verse;
+        return a.ayah === v.verse
+      });
       const ayah: Ayah = {
         verse: v.verse,
         start: durationApiAyah?.start_time,
@@ -63,7 +65,7 @@ export default function QuranPlayer() {
         text: v.text
       }
       return ayah;
-    }).filter((a) => a.start && a.end)
+    }).filter((a) => a.start !== undefined && a.end !== undefined)
     setAyat(ayat)
   }
   // resources (async data)
@@ -220,8 +222,6 @@ export default function QuranPlayer() {
       String(s % 60).padStart(2, "0")
     );
   }
-
-  createEffect(() => console.log(ayat()))
   // ── JSX ──────────────────────────────────────────────────────────────
   return (
     <>

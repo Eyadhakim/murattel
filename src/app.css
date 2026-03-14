@@ -368,7 +368,7 @@ button:disabled {
   color: var(--text);
   direction: rtl;
   max-height: 300px;
-  overflow-x: scroll;
+  overflow-y: scroll;
 }
 .ayah-num {
   display: inline-block;
