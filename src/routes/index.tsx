@@ -1,0 +1,542 @@
+import { createEffect, Match, on, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, For, createResource, Switch } from "solid-js";
+import { quran } from "~/constants/quran";
+
+// ── Types ──────────────────────────────────────────────────────────────
+interface Surah {
+  id: number;
+  name: string;
+}
+
+interface Reader {
+  name: string;
+  server: string;
+  readerId: number;
+  mushafId: number;
+}
+
+interface Ayah {
+  verse: number;
+  start: number;
+  end: number;
+  text: string;
+}
+
+// ── Fetchers ───────────────────────────────────────────────────────────
+async function fetchSurahs(): Promise<Surah[]> {
+  const res = await fetch("https://mp3quran.net/api/v3/suwar");
+  const { suwar } = await res.json();
+  return suwar.map((s: any) => ({
+    id: s.id,
+    name: s.name
+  }));
+}
+
+async function fetchReaders(): Promise<Reader[]> {
+  const res = await fetch("https://mp3quran.net/api/v3/reciters");
+  const { reciters } = await res.json();
+  return reciters
+    .filter((r: any) =>
+      r.moshaf.some((m: any) => m.name === "حفص عن عاصم - مرتل"),
+    )
+    .map((r: any) => {
+      const m = r.moshaf.find((m: any) => m.name === "حفص عن عاصم - مرتل");
+      return { name: r.name, server: m.server, readerId: r.id, mushafId: m.id };
+    });
+}
+
+
+// ── Component ──────────────────────────────────────────────────────────
+export default function QuranPlayer() {
+  async function fetchAyat({ surahId, mushafId }: { surahId: number; mushafId: number }) {
+    if (!surahId || !mushafId || surahId > 114 || surahId < 1) return [];
+    const res = await fetch(`https://mp3quran.net/api/v3/ayat_timing?surah=${surahId}&read=${mushafId}`);
+    const data = await res.json();
+    const verses = quran[String(surahId) as keyof typeof quran]
+    console.log(data)
+    const ayat = verses.map(v => {
+      const durationApiAyah = data.find((a: any) => a.ayah === v.verse);
+      const ayah: Ayah = {
+        verse: v.verse,
+        start: durationApiAyah?.start_time,
+        end: durationApiAyah?.end_time,
+        text: v.text
+      }
+      return ayah;
+    }).filter((a) => a.start && a.end)
+    setAyat(ayat)
+  }
+  // resources (async data)
+  const [surahs] = createResource<Surah[]>(fetchSurahs);
+  const [readers] = createResource<Reader[]>(fetchReaders);
+
+  // player state
+  const [currentSurah, setCurrentSurah] = createSignal(0);
+  const [currentReader, setCurrentReader] = createSignal(0);
+  const [ayat, setAyat] = createSignal<Ayah[]>([]);
+  const [currentAyah, setCurrentAyah] = createSignal<Ayah | null>(null)
+  const [playingReader, setPlayingReader] = createSignal(0);
+  const [isPlaying, setIsPlaying] = createSignal(false);
+  const [isRepeat, setIsRepeat] = createSignal(false);
+  const [isShuffle, setIsShuffle] = createSignal(false);
+  const [isLoading, setIsLoading] = createSignal(false);
+  const [elapsed, setElapsed] = createSignal(0);
+  const [totalTime, setTotalTime] = createSignal(0);
+  const [drawerOpen, setDrawerOpen] = createSignal<"surahs" | "readers" | null>(
+    null,
+  );
+  const [surahFilter, setSurahFilter] = createSignal("");
+  const [readerFilter, setReaderFilter] = createSignal("");
+
+  // derived
+  const filteredSurahs = () =>
+    surahs()?.filter((s) => s.name.includes(surahFilter())) ?? [];
+  const filteredReaders = () =>
+    readers()?.filter((r) => r.name.includes(readerFilter())) ?? [];
+  const currentSurahName = () => surahs()?.[currentSurah()]?.name ?? "";
+  const currentReaderName = () => readers()?.[playingReader()]?.name ?? "";
+
+  function handlePlay() {
+    setIsPlaying(true);
+  }
+
+  function handlePause() {
+    setIsPlaying(false);
+  }
+
+  function handleLoadMetaData() {
+    setTotalTime(Math.round(audio.duration));
+  }
+
+  function handleTimeUpdate() {
+    const timeMs = audio.currentTime*1000;
+    setElapsed(Math.round(audio.currentTime));
+    if (!ayat()) return;
+    const ayah = ayat()?.find(a => a.start < timeMs && a.end > timeMs);
+    setCurrentAyah(ayah || null)
+  }
+
+  function handleEnded() {
+    const last = (surahs()?.length ?? 1) - 1;
+    if (isRepeat())       { playSurah(currentSurah()); return; }
+    if (isShuffle())      { playSurah(Math.round(Math.random() * last)); return; }
+    if (currentSurah() < last) selectSurah(currentSurah() + 1);
+  }
+
+  // ── Audio ────────────────────────────────────────────────────────────
+  let audio!: HTMLAudioElement;
+  onMount(() => {
+    audio = new Audio();
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("loadedmetadata", handleLoadMetaData);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+  })
+
+  onCleanup(() => {
+    if (!audio) return;
+    audio.removeEventListener("play", handlePlay);
+    audio.removeEventListener("pause", handlePause);
+    audio.removeEventListener("loadedmetadata", handleLoadMetaData);
+    audio.removeEventListener("timeupdate", handleTimeUpdate);
+    audio.removeEventListener("ended", handleEnded);
+    audio.pause();
+    audio.src = "";
+  })
+
+  // ── Actions ──────────────────────────────────────────────────────────
+  function playSurah(index: number) {
+    if (isRepeat() && currentSurah() === index) {
+      audio.play().finally(() => setIsLoading(false));
+      return;
+    }
+    setCurrentSurah(index);
+    const s = surahs()?.[index];
+    const r = readers()?.[playingReader()];
+    if (!s || !r || !surahs() || !readers()) return;
+    fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
+      audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
+      audio.play();
+    }).finally(() => setIsLoading(false));
+  }
+
+    function toArabicDigits(ayah: Ayah) {
+      return new Intl.NumberFormat('ar-EG').format(ayah.verse);
+    };
+
+  function selectSurah(i: number) {
+    if (isLoading()) return;
+    setPlayingReader(currentReader());
+    setElapsed(0);
+    setDrawerOpen(null);
+    setIsLoading(true);
+    playSurah(i);
+  }
+
+  function selectReader(i: number) {
+    setCurrentReader(i);
+    if (window.innerWidth <= 900) setDrawerOpen(null);
+  }
+
+  function togglePlay() {
+    if (!audio.src) return;
+    isPlaying() ? audio.pause() : audio.play();
+  }
+
+  function prevSurah() {
+    if (currentSurah() <= 0) return;
+    selectSurah(currentSurah() - 1);
+  }
+
+  function nextSurah() {
+    if (currentSurah() >= (surahs()?.length ?? 1) - 1) return;
+    selectSurah(currentSurah() + 1);
+  }
+
+  function handleRangeInput(e: InputEvent) {
+    const el = e.target as HTMLInputElement;
+    audio.currentTime = Number(el.value)
+    setElapsed(Math.round(audio.currentTime));
+  }
+
+  function toggleShuffle() {
+    setIsShuffle((v) => !v);
+    if (isShuffle()) setIsRepeat(false);
+  }
+
+  function toggleRepeat() {
+    setIsRepeat((v) => !v);
+    if (isRepeat()) setIsShuffle(false);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  function fmt(s: number) {
+    return (
+      Math.floor(s / 3600) +
+      ":" +
+      String(Math.floor((s % 3600) / 60)).padStart(2, "0") +
+      ":" +
+      String(s % 60).padStart(2, "0")
+    );
+  }
+
+  createEffect(() => console.log(ayat()))
+  // ── JSX ──────────────────────────────────────────────────────────────
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        class={`overlay ${drawerOpen() ? "show" : ""}`}
+        onClick={() => setDrawerOpen(null)}
+      />
+
+      {/* Drawer: Surahs */}
+      <div
+        class={`drawer left-side ${drawerOpen() === "surahs" ? "open" : ""}`}
+      >
+        <div class="sidebar-header">
+          <div class="icon">📖</div>
+          <h2>السور</h2>
+        </div>
+        <div class="search-wrap">
+          <input
+            type="text"
+            placeholder="ابحث عن سورة..."
+            onInput={(e) => setSurahFilter(e.currentTarget.value)}
+          />
+        </div>
+        <div class="list-scroll">
+          <For each={filteredSurahs()}>
+            {(s, i) => (
+              <div
+                class={`list-item ${s.id === surahs()?.[currentSurah()]?.id ? "active" : ""}`}
+                onClick={() => selectSurah(surahs()!.indexOf(s))}
+              >
+                <span class="num">{s.id}</span>
+                <span>{s.name}</span>
+                <span class="dot" />
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
+
+      {/* Drawer: Readers */}
+      <div
+        class={`drawer right-side ${drawerOpen() === "readers" ? "open" : ""}`}
+      >
+        <div class="sidebar-header">
+          <div class="icon">🎙</div>
+          <h2>القراء</h2>
+        </div>
+        <div class="search-wrap">
+          <input
+            type="text"
+            placeholder="ابحث عن قارئ..."
+            onInput={(e) => setReaderFilter(e.currentTarget.value)}
+          />
+        </div>
+        <div class="list-scroll">
+          <For each={filteredReaders()}>
+            {(r, i) => (
+              <div
+                class={`list-item ${r.readerId === readers()?.[currentReader()]?.readerId ? "active" : ""}`}
+                onClick={() => selectReader(readers()!.indexOf(r))}
+              >
+                <span class="num">{i() + 1}</span>
+                <span>{r.name}</span>
+                <span class="dot" />
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
+
+      {/* App grid */}
+      <div class="app">
+        {/* Sidebar: Surahs */}
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="icon">📖</div>
+            <h2>السور</h2>
+          </div>
+          <div class="search-wrap">
+            <input
+              type="text"
+              placeholder="ابحث عن سورة..."
+              onInput={(e) => setSurahFilter(e.currentTarget.value)}
+            />
+          </div>
+          <div class="list-scroll">
+            <For each={filteredSurahs()}>
+              {(s, i) => (
+                <div
+                  class={`list-item ${s.id === surahs()?.[currentSurah()]?.id ? "active" : ""}`}
+                  onClick={() => selectSurah(surahs()!.indexOf(s))}
+                >
+                  <span class="num">{s.id}</span>
+                  <span>{s.name}</span>
+                  <span class="dot" />
+                </div>
+              )}
+            </For>
+          </div>
+        </aside>
+
+        {/* Sidebar: Readers */}
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="icon">🎙</div>
+            <h2>القراء</h2>
+          </div>
+          <div class="search-wrap">
+            <input
+              type="text"
+              placeholder="ابحث عن قارئ..."
+              onInput={(e) => setReaderFilter(e.currentTarget.value)}
+            />
+          </div>
+          <div class="list-scroll">
+            <For each={filteredReaders()}>
+              {(r, i) => (
+                <div
+                  class={`list-item ${r.readerId === readers()?.[currentReader()]?.readerId ? "active" : ""}`}
+                  onClick={() => selectReader(readers()!.indexOf(r))}
+                >
+                  <span class="num">{i() + 1}</span>
+                  <span>{r.name}</span>
+                  <span class="dot" />
+                </div>
+              )}
+            </For>
+          </div>
+        </aside>
+
+        {/* Player */}
+        <main class="player-area">
+          <div class="geo-pattern" />
+
+          {/* Mobile bar */}
+          <div class="mobile-bar">
+            <span class="logo">القرآن الكريم</span>
+            <div class="mobile-btns">
+              <button
+                class={`mobile-btn ${drawerOpen() === "surahs" ? "open" : ""}`}
+                onClick={() =>
+                  setDrawerOpen(drawerOpen() === "surahs" ? null : "surahs")
+                }
+              >
+                📖 السور
+              </button>
+              <button
+                class={`mobile-btn ${drawerOpen() === "readers" ? "open" : ""}`}
+                onClick={() =>
+                  setDrawerOpen(drawerOpen() === "readers" ? null : "readers")
+                }
+              >
+                🎙 القراء
+              </button>
+            </div>
+          </div>
+
+          {/* Now playing */}
+          <div class="now-playing">
+            <div class="surah-name">
+              {currentSurahName() ? `سورة ${currentSurahName()}` : "اختر سورة"}
+            </div>
+            <div class="reader-name">{currentReaderName() || "اختر قارئ"}</div>
+
+          </div>
+
+          {/* Medallion */}
+          <div class="medallion-wrap">
+            <div class={`medallion ${isPlaying() ? "playing" : ""}`}>☽</div>
+          </div>
+
+          <div class="ayah-section">
+            <div class="ayah-box">
+              <div class="ayah-tag">الآية الحالية</div>
+              <div class="ayah-text" id="ayahText">
+                <Switch>
+                  <Match when={currentAyah()}>
+                    {currentAyah()?.text}
+                  </Match>
+                  <Match when={!currentAyah() && ayat().length !== 0}>
+                    بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ
+                  </Match>
+                  <Match when={ayat().length === 0}>
+                    ------------------------------
+                  </Match>
+                </Switch>
+                <Show when={currentAyah()}>
+                  <span class="ayah-num">{toArabicDigits(currentAyah()!)}</span>
+                </Show>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div class="progress-section">
+            <div class="time-row">
+              <span>{fmt(elapsed())}</span>
+              <span>{fmt(totalTime())}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max={totalTime()}
+              value={elapsed()}
+              class="progress-bar"
+              onInput={handleRangeInput}
+            />
+          </div>
+
+          {/* Controls */}
+          <div class="controls">
+            <button
+              class="ctrl-btn sm"
+              style={{ color: isShuffle() ? "var(--gold)" : "" }}
+              onClick={toggleShuffle}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+              </svg>
+            </button>
+
+            <button class="ctrl-btn md" onClick={prevSurah} disabled={currentSurah() === 0}>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polygon points="19 20 9 12 19 4 19 20" />
+                <line x1="5" y1="19" x2="5" y2="5" />
+              </svg>
+            </button>
+
+            <button
+              class={`play-btn ${isPlaying() ? "playing" : ""}`}
+              onClick={togglePlay}
+              disabled={isLoading()}
+            >
+              <Switch>
+                <Match when={isLoading()}>
+                  <span class="spinner"></span>
+                </Match>
+                <Match when={!isPlaying() && !isLoading()}>
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                </Match>
+                <Match when={isPlaying() && !isLoading()}>
+                  <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+                </Match>
+              </Switch>
+            </button>
+
+            <button class="ctrl-btn md" onClick={nextSurah} disabled={currentSurah() === 113}>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polygon points="5 4 15 12 5 20 5 4" />
+                <line x1="19" y1="5" x2="19" y2="19" />
+              </svg>
+            </button>
+
+            <button
+              class="ctrl-btn sm"
+              style={{ color: isRepeat() ? "var(--gold)" : "" }}
+              onClick={toggleRepeat}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+            </button>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
