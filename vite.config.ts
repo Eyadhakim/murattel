@@ -5,6 +5,8 @@ import { solidStart } from "@solidjs/start/config";
 
 export default defineConfig({
   plugins: [solidStart(),
-    nitro()
+    nitro({
+      preset: "cloudflare-module"
+    })
   ]
 });

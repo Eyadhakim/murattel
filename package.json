@@ -5,7 +5,9 @@
     "dev": "vite dev",
     "build": "vite build",
     "start": "vite start",
-    "preview": "vite preview"
+    "preview": "pnpm run build && wrangler dev",
+    "deploy": "pnpm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -21,6 +23,7 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.2.0"
+    "@capacitor/cli": "^8.2.0",
+    "wrangler": "^4.73.0"
   }
 }
