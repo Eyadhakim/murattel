@@ -8,8 +8,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "2.0.0-alpha.2",
@@ -19,8 +17,5 @@
   },
   "engines": {
     "node": ">=22"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^8.2.0"
   }
 }

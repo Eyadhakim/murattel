@@ -1,6 +1,8 @@
-import { createEffect, Match, on, onMount, Show } from "solid-js";
-import { createSignal, onCleanup, For, createResource, Switch } from "solid-js";
+import { Match, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, For, Switch } from "solid-js";
 import { quran } from "~/constants/quran";
+import { surahs } from "~/constants/surahs";
+import { readers } from "~/constants/readers";
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface Surah {
@@ -21,30 +23,6 @@ interface Ayah {
   end: number;
   text: string;
 }
-
-// ── Fetchers ───────────────────────────────────────────────────────────
-async function fetchSurahs(): Promise<Surah[]> {
-  const res = await fetch("https://mp3quran.net/api/v3/suwar");
-  const { suwar } = await res.json();
-  return suwar.map((s: any) => ({
-    id: s.id,
-    name: s.name
-  }));
-}
-
-async function fetchReaders(): Promise<Reader[]> {
-  const res = await fetch("https://mp3quran.net/api/v3/reciters");
-  const { reciters } = await res.json();
-  return reciters
-    .filter((r: any) =>
-      r.moshaf.some((m: any) => m.name === "حفص عن عاصم - مرتل"),
-    )
-    .map((r: any) => {
-      const m = r.moshaf.find((m: any) => m.name === "حفص عن عاصم - مرتل");
-      return { name: r.name, server: m.server, readerId: r.id, mushafId: m.id };
-    });
-}
-
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function QuranPlayer() {
@@ -68,9 +46,6 @@ export default function QuranPlayer() {
     }).filter((a) => a.start !== undefined && a.end !== undefined)
     setAyat(ayat)
   }
-  // resources (async data)
-  const [surahs] = createResource<Surah[]>(fetchSurahs);
-  const [readers] = createResource<Reader[]>(fetchReaders);
 
   // player state
   const [currentSurah, setCurrentSurah] = createSignal(0);
@@ -92,11 +67,11 @@ export default function QuranPlayer() {
 
   // derived
   const filteredSurahs = () =>
-    surahs()?.filter((s) => s.name.includes(surahFilter())) ?? [];
+    surahs.filter((s) => s.name.includes(surahFilter())) ?? [];
   const filteredReaders = () =>
-    readers()?.filter((r) => r.name.includes(readerFilter())) ?? [];
-  const currentSurahName = () => surahs()?.[currentSurah()]?.name ?? "";
-  const currentReaderName = () => readers()?.[playingReader()]?.name ?? "";
+    readers.filter((r) => r.name.includes(readerFilter())) ?? [];
+  const currentSurahName = () => surahs[currentSurah()]?.name ?? "";
+  const currentReaderName = () => readers[playingReader()]?.name ?? "";
 
   function handlePlay() {
     setIsPlaying(true);
@@ -119,7 +94,7 @@ export default function QuranPlayer() {
   }
 
   function handleEnded() {
-    const last = (surahs()?.length ?? 1) - 1;
+    const last = surahs.length - 1;
     if (isRepeat())       { playSurah(currentSurah()); return; }
     if (isShuffle())      { playSurah(Math.round(Math.random() * last)); return; }
     if (currentSurah() < last) selectSurah(currentSurah() + 1);
@@ -149,18 +124,19 @@ export default function QuranPlayer() {
 
   // ── Actions ──────────────────────────────────────────────────────────
   function playSurah(index: number) {
+    setIsLoading(true);
     if (isRepeat() && currentSurah() === index) {
       audio.play().finally(() => setIsLoading(false));
       return;
     }
     setCurrentSurah(index);
-    const s = surahs()?.[index];
-    const r = readers()?.[playingReader()];
-    if (!s || !r || !surahs() || !readers()) return;
+    const s = surahs[index];
+    const r = readers[playingReader()];
+    if (!s || !r) return;
     fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
       audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
-      audio.play();
-    }).finally(() => setIsLoading(false));
+      audio.play().finally(() => setIsLoading(false));
+    })
   }
 
     function toArabicDigits(ayah: Ayah) {
@@ -172,7 +148,6 @@ export default function QuranPlayer() {
     setPlayingReader(currentReader());
     setElapsed(0);
     setDrawerOpen(null);
-    setIsLoading(true);
     playSurah(i);
   }
 
@@ -192,7 +167,7 @@ export default function QuranPlayer() {
   }
 
   function nextSurah() {
-    if (currentSurah() >= (surahs()?.length ?? 1) - 1) return;
+    if (currentSurah() >= (surahs.length ?? 1) - 1) return;
     selectSurah(currentSurah() + 1);
   }
 
@@ -250,8 +225,8 @@ export default function QuranPlayer() {
           <For each={filteredSurahs()}>
             {(s, i) => (
               <div
-                class={`list-item ${s.id === surahs()?.[currentSurah()]?.id ? "active" : ""}`}
-                onClick={() => selectSurah(surahs()!.indexOf(s))}
+                class={`list-item ${s.id === surahs[currentSurah()]?.id ? "active" : ""}`}
+                onClick={() => selectSurah(surahs.indexOf(s))}
               >
                 <span class="num">{s.id}</span>
                 <span>{s.name}</span>
@@ -281,8 +256,8 @@ export default function QuranPlayer() {
           <For each={filteredReaders()}>
             {(r, i) => (
               <div
-                class={`list-item ${r.readerId === readers()?.[currentReader()]?.readerId ? "active" : ""}`}
-                onClick={() => selectReader(readers()!.indexOf(r))}
+                class={`list-item ${r.readerId === readers[currentReader()]?.readerId ? "active" : ""}`}
+                onClick={() => selectReader(readers.indexOf(r))}
               >
                 <span class="num">{i() + 1}</span>
                 <span>{r.name}</span>
@@ -312,8 +287,8 @@ export default function QuranPlayer() {
             <For each={filteredSurahs()}>
               {(s, i) => (
                 <div
-                  class={`list-item ${s.id === surahs()?.[currentSurah()]?.id ? "active" : ""}`}
-                  onClick={() => selectSurah(surahs()!.indexOf(s))}
+                  class={`list-item ${s.id === surahs[currentSurah()]?.id ? "active" : ""}`}
+                  onClick={() => selectSurah(surahs.indexOf(s))}
                 >
                   <span class="num">{s.id}</span>
                   <span>{s.name}</span>
@@ -341,8 +316,8 @@ export default function QuranPlayer() {
             <For each={filteredReaders()}>
               {(r, i) => (
                 <div
-                  class={`list-item ${r.readerId === readers()?.[currentReader()]?.readerId ? "active" : ""}`}
-                  onClick={() => selectReader(readers()!.indexOf(r))}
+                  class={`list-item ${r.readerId === readers[currentReader()]?.readerId ? "active" : ""}`}
+                  onClick={() => selectReader(readers.indexOf(r))}
                 >
                   <span class="num">{i() + 1}</span>
                   <span>{r.name}</span>
@@ -359,8 +334,15 @@ export default function QuranPlayer() {
 
           {/* Mobile bar */}
           <div class="mobile-bar">
-            <span class="logo">القرآن الكريم</span>
+            <span class="logo">مُرتّل</span>
             <div class="mobile-btns">
+              <a
+                href="https://github.com/Eyadhakim/murattel/releases/download/Beta/app-release.apk"
+                download
+                class="download-btn"
+              >
+                حمل تطبيق مُرتّل
+              </a>
               <button
                 class={`mobile-btn ${drawerOpen() === "surahs" ? "open" : ""}`}
                 onClick={() =>
