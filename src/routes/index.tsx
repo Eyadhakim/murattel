@@ -26,32 +26,43 @@ interface Ayah {
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function QuranPlayer() {
-  async function fetchAyat({ surahId, mushafId }: { surahId: number; mushafId: number }) {
+  async function fetchAyat({
+    surahId,
+    mushafId,
+  }: {
+    surahId: number;
+    mushafId: number;
+  }) {
     if (!surahId || !mushafId || surahId > 114 || surahId < 1) return [];
-    const res = await fetch(`https://mp3quran.net/api/v3/ayat_timing?surah=${surahId}&read=${mushafId}`);
+    const res = await fetch(
+      `https://mp3quran.net/api/v3/ayat_timing?surah=${surahId}&read=${mushafId}`,
+    );
     const data = await res.json();
-    const verses = quran[String(surahId) as keyof typeof quran]
-    const ayat = verses.map(v => {
-      const durationApiAyah = data.find(a => {
-        if (data[0].ayah + 1 === verses[0].verse && surahId === 1) return a.ayah + 1 === v.verse;
-        return a.ayah === v.verse
-      });
-      const ayah: Ayah = {
-        verse: v.verse,
-        start: durationApiAyah?.start_time,
-        end: durationApiAyah?.end_time,
-        text: v.text
-      }
-      return ayah;
-    }).filter((a) => a.start !== undefined && a.end !== undefined)
-    setAyat(ayat)
+    const verses = quran[String(surahId) as keyof typeof quran];
+    const ayat = verses
+      .map((v) => {
+        const durationApiAyah = data.find((a) => {
+          if (data[0].ayah + 1 === verses[0].verse && surahId === 1)
+            return a.ayah + 1 === v.verse;
+          return a.ayah === v.verse;
+        });
+        const ayah: Ayah = {
+          verse: v.verse,
+          start: durationApiAyah?.start_time,
+          end: durationApiAyah?.end_time,
+          text: v.text,
+        };
+        return ayah;
+      })
+      .filter((a) => a.start !== undefined && a.end !== undefined);
+    setAyat(ayat);
   }
 
   // player state
   const [currentSurah, setCurrentSurah] = createSignal(0);
   const [currentReader, setCurrentReader] = createSignal(0);
   const [ayat, setAyat] = createSignal<Ayah[]>([]);
-  const [currentAyah, setCurrentAyah] = createSignal<Ayah | null>(null)
+  const [currentAyah, setCurrentAyah] = createSignal<Ayah | null>(null);
   const [playingReader, setPlayingReader] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [isRepeat, setIsRepeat] = createSignal(false);
@@ -64,6 +75,11 @@ export default function QuranPlayer() {
   );
   const [surahFilter, setSurahFilter] = createSignal("");
   const [readerFilter, setReaderFilter] = createSignal("");
+  const [showDonate, setShowDonate] = createSignal(false);
+  const [donateAmount, setDonateAmount] = createSignal("");
+  const [copied, setCopied] = createSignal(false);
+const [menuOpen, setMenuOpen] = createSignal(false);
+  const PHONE = "01148048224";
 
   // derived
   const filteredSurahs = () =>
@@ -86,17 +102,23 @@ export default function QuranPlayer() {
   }
 
   function handleTimeUpdate() {
-    const timeMs = audio.currentTime*1000;
+    const timeMs = audio.currentTime * 1000;
     setElapsed(Math.round(audio.currentTime));
     if (!ayat()) return;
-    const ayah = ayat()?.find(a => a.start < timeMs && a.end > timeMs);
-    setCurrentAyah(ayah || null)
+    const ayah = ayat()?.find((a) => a.start < timeMs && a.end > timeMs);
+    setCurrentAyah(ayah || null);
   }
 
   function handleEnded() {
     const last = surahs.length - 1;
-    if (isRepeat())       { playSurah(currentSurah()); return; }
-    if (isShuffle())      { playSurah(Math.round(Math.random() * last)); return; }
+    if (isRepeat()) {
+      playSurah(currentSurah());
+      return;
+    }
+    if (isShuffle()) {
+      playSurah(Math.round(Math.random() * last));
+      return;
+    }
     if (currentSurah() < last) selectSurah(currentSurah() + 1);
   }
 
@@ -109,7 +131,7 @@ export default function QuranPlayer() {
     audio.addEventListener("loadedmetadata", handleLoadMetaData);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
-  })
+  });
 
   onCleanup(() => {
     if (!audio) return;
@@ -120,7 +142,14 @@ export default function QuranPlayer() {
     audio.removeEventListener("ended", handleEnded);
     audio.pause();
     audio.src = "";
-  })
+  });
+
+  function copyPhone() {
+    navigator.clipboard.writeText(PHONE).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
 
   // ── Actions ──────────────────────────────────────────────────────────
   function playSurah(index: number) {
@@ -136,12 +165,12 @@ export default function QuranPlayer() {
     fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
       audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
       audio.play().finally(() => setIsLoading(false));
-    })
+    });
   }
 
-    function toArabicDigits(ayah: Ayah) {
-      return new Intl.NumberFormat('ar-EG').format(ayah.verse);
-    };
+  function toArabicDigits(ayah: Ayah) {
+    return new Intl.NumberFormat("ar-EG").format(ayah.verse);
+  }
 
   function selectSurah(i: number) {
     if (isLoading()) return;
@@ -157,10 +186,7 @@ export default function QuranPlayer() {
   }
 
   function togglePlay() {
-    if (!audio.src) {
-      playSurah(currentSurah() || 0);
-      return;
-    }
+    if (!audio.src) return;
     isPlaying() ? audio.pause() : audio.play();
   }
 
@@ -176,7 +202,7 @@ export default function QuranPlayer() {
 
   function handleRangeInput(e: InputEvent) {
     const el = e.target as HTMLInputElement;
-    audio.currentTime = Number(el.value)
+    audio.currentTime = Number(el.value);
     setElapsed(Math.round(audio.currentTime));
   }
 
@@ -333,39 +359,100 @@ export default function QuranPlayer() {
 
         {/* Player */}
         <main class="player-area">
-          <div class="geo-pattern" />
+          <div
+            class={`donate-overlay ${showDonate() ? "show" : ""}`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowDonate(false);
+            }}
+          >
+            <div class="donate-modal">
+              <button class="donate-close" onClick={() => setShowDonate(false)}>
+                ✕
+              </button>
 
-          {/* Mobile bar */}
-          <div class="mobile-bar">
-            <span class="logo">مُرتّل</span>
-            <div class="mobile-btns">
-              <a
-                href="https://github.com/Eyadhakim/murattel/releases/download/MurattelV1.1/Murattel.apk"
-                download="Murattel.apk"
-                rel="noopener noreferrer"
-                target="_blank"
-                class="download-btn"
-              >
-                حمل تطبيق مُرتّل
-              </a>
+              <div class="donate-title">ادعم مُرتّل</div>
+              <div class="donate-desc">
+                لو مُرتّل نفعك، مبلغ صغير بيساعد في الاستمرار
+                <br />
+                وبيكون في ميزان حسناتك إن شاء الله
+              </div>
+
               <button
-                class={`mobile-btn ${drawerOpen() === "surahs" ? "open" : ""}`}
-                onClick={() =>
-                  setDrawerOpen(drawerOpen() === "surahs" ? null : "surahs")
-                }
+                class={`donate-btn ${copied() ? "copied" : ""}`}
+                onClick={copyPhone}
               >
-                📖 السور
+                {copied() ? "✓ اتنسخ!" : `انسخ الرقم — ${PHONE}`}
               </button>
-              <button
-                class={`mobile-btn ${drawerOpen() === "readers" ? "open" : ""}`}
-                onClick={() =>
-                  setDrawerOpen(drawerOpen() === "readers" ? null : "readers")
-                }
-              >
-                🎙 القراء
-              </button>
+
+              <div class="donate-note">
+                {copied()
+                  ? "افتح InstaPay أو فودافون كاش وحول على الرقم ده"
+                  : "بيقبل InstaPay وفودافون كاش"}
+              </div>
             </div>
           </div>
+          <div class="geo-pattern" />
+          {/* Mobile bar */}
+          <div class="mobile-bar">
+  <span class="logo">مُرتّل</span>
+  <div class="mobile-menu-wrapper">
+    <button
+      class={`menu-btn ${menuOpen() ? "open" : ""}`}
+      onClick={() => setMenuOpen((v) => !v)}
+    >
+      <div class="hamburger">
+        <span /><span /><span />
+      </div>
+      القائمة
+    </button>
+
+    <div class={`dropdown ${menuOpen() ? "show" : ""}`}>
+      <div
+        class="menu-item"
+        onClick={() => { setDrawerOpen("surahs"); setMenuOpen(false); }}
+      >
+        <div class="item-icon">📖</div>
+        <span>السور</span>
+      </div>
+
+      <div
+        class="menu-item"
+        onClick={() => { setDrawerOpen("readers"); setMenuOpen(false); }}
+      >
+        <div class="item-icon">🎙</div>
+        <span>القراء</span>
+      </div>
+
+      <div class="menu-divider" />
+
+      <a
+        class="menu-item"
+        href="https://github.com/Eyadhakim/murattel/releases/download/MurattelV1.1/Murattel.apk"
+        download="Murattel.apk"
+        rel="noopener noreferrer"
+        target="_blank"
+        onClick={() => setMenuOpen(false)}
+      >
+        <div class="item-icon">📲</div>
+        <span>حمل التطبيق</span>
+      </a>
+
+      <div class="menu-divider" />
+
+      <div
+        class="menu-item donate"
+        onClick={() => { setShowDonate(true); setMenuOpen(false); }}
+      >
+        <div class="item-icon">🤲</div>
+        <span>ادعم مُرتّل</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+          <button class="btn-donate" onClick={() => setShowDonate(true)}>
+            ادعم مُرتّل
+          </button>
 
           {/* Now playing */}
           <div class="now-playing">
@@ -373,7 +460,6 @@ export default function QuranPlayer() {
               {currentSurahName() ? `سورة ${currentSurahName()}` : "اختر سورة"}
             </div>
             <div class="reader-name">{currentReaderName() || "اختر قارئ"}</div>
-
           </div>
 
           {/* Medallion */}
@@ -386,9 +472,7 @@ export default function QuranPlayer() {
               <div class="ayah-tag">الآية الحالية</div>
               <div class="ayah-text" id="ayahText">
                 <Switch>
-                  <Match when={currentAyah()}>
-                    {currentAyah()?.text}
-                  </Match>
+                  <Match when={currentAyah()}>{currentAyah()?.text}</Match>
                   <Match when={!currentAyah() && ayat().length !== 0}>
                     بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ
                   </Match>
@@ -441,7 +525,11 @@ export default function QuranPlayer() {
               </svg>
             </button>
 
-            <button class="ctrl-btn md" onClick={prevSurah} disabled={currentSurah() === 0}>
+            <button
+              class="ctrl-btn md"
+              onClick={prevSurah}
+              disabled={currentSurah() === 0}
+            >
               <svg
                 width="18"
                 height="18"
@@ -476,19 +564,23 @@ export default function QuranPlayer() {
                 </Match>
                 <Match when={isPlaying() && !isLoading()}>
                   <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
                 </Match>
               </Switch>
             </button>
 
-            <button class="ctrl-btn md" onClick={nextSurah} disabled={currentSurah() === 113}>
+            <button
+              class="ctrl-btn md"
+              onClick={nextSurah}
+              disabled={currentSurah() === 113}
+            >
               <svg
                 width="18"
                 height="18"
