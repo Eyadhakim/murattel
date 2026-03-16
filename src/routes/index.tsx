@@ -337,8 +337,10 @@ export default function QuranPlayer() {
             <span class="logo">مُرتّل</span>
             <div class="mobile-btns">
               <a
-                href="https://github.com/Eyadhakim/murattel/releases/download/Beta/app-release.apk"
-                download
+                href="https://github.com/Eyadhakim/murattel/releases/download/MurattelV1.1/Murattel.apk"
+                download="Murattel.apk"
+                rel="noopener noreferrer"
+                target="_blank"
                 class="download-btn"
               >
                 حمل تطبيق مُرتّل

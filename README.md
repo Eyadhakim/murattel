@@ -1,4 +1,4 @@
-# Murattel
+# مرتّل — Murattel
 
 A Quran player with real-time verse display, featuring recitations by renowned reciters in the Hafs an Asim narration.
 
@@ -10,6 +10,7 @@ A Quran player with real-time verse display, featuring recitations by renowned r
 - **SolidJS** — state management and reactivity
 - **TypeScript**
 - **CSS** — responsive design with no external UI libraries
+- **Capacitor** — Android app wrapper
 - **mp3quran.net API** — audio files and verse timing data
 
 ---
@@ -24,13 +25,14 @@ A Quran player with real-time verse display, featuring recitations by renowned r
 - Repeat and shuffle modes
 - Fully responsive across all screen sizes
 - Custom 404 page
+- Android app available for download
 
 ---
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/your-username/murattel
+git clone https://github.com/Eyadhakim/murattel
 cd murattel
 npm install
 npm run dev
@@ -38,10 +40,31 @@ npm run dev
 
 ---
 
+## Android App
+
+The `android/` directory contains the Capacitor Android project.
+
+To build the APK:
+
+```bash
+npm run build
+npx cap sync
+cd android
+./gradlew assembleRelease
+```
+
+The APK will be at:
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+Or download the latest release directly from the website.
+
+---
+
 ## Roadmap
 
 ### Coming Soon
-- [ ] **Android app** via Capacitor
 - [ ] **Surah download** — download any surah with any reciter's voice
 - [ ] **Tafsir** — display interpretation of the current verse (Ibn Kathir / Al-Saadi)
 - [ ] **English support** — translated meanings and English UI
