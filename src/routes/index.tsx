@@ -186,7 +186,10 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   }
 
   function togglePlay() {
-    if (!audio.src) return;
+    if (!audio.src) {
+      playSurah(currentSurah() || 0);
+      return;
+    }
     isPlaying() ? audio.pause() : audio.play();
   }
 
