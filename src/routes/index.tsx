@@ -63,7 +63,6 @@ export default function QuranPlayer() {
   const [currentReader, setCurrentReader] = createSignal(0);
   const [ayat, setAyat] = createSignal<Ayah[]>([]);
   const [currentAyah, setCurrentAyah] = createSignal<Ayah | null>(null);
-  const [playingReader, setPlayingReader] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [isRepeat, setIsRepeat] = createSignal(false);
   const [isShuffle, setIsShuffle] = createSignal(false);
@@ -87,7 +86,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   const filteredReaders = () =>
     readers.filter((r) => r.name.includes(readerFilter())) ?? [];
   const currentSurahName = () => surahs[currentSurah()]?.name ?? "";
-  const currentReaderName = () => readers[playingReader()]?.name ?? "";
+  const currentReaderName = () => readers[currentReader()]?.name ?? "";
 
   function handlePlay() {
     setIsPlaying(true);
@@ -160,7 +159,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
     }
     setCurrentSurah(index);
     const s = surahs[index];
-    const r = readers[playingReader()];
+    const r = readers[currentReader()];
     if (!s || !r) return;
     fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
       audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
@@ -174,7 +173,6 @@ const [menuOpen, setMenuOpen] = createSignal(false);
 
   function selectSurah(i: number) {
     if (isLoading()) return;
-    setPlayingReader(currentReader());
     setElapsed(0);
     setDrawerOpen(null);
     playSurah(i);
@@ -183,6 +181,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   function selectReader(i: number) {
     setCurrentReader(i);
     if (window.innerWidth <= 900) setDrawerOpen(null);
+    selectSurah(currentSurah()
   }
 
   function togglePlay() {
@@ -457,7 +456,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
             ادعم مُرتّل
           </button>
 
-          {/* Now playing */}
+          {/* Now playing */}currentReader
           <div class="now-playing">
             <div class="surah-name">
               {currentSurahName() ? `سورة ${currentSurahName()}` : "اختر سورة"}
