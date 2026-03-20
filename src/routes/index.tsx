@@ -165,7 +165,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
     fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
       audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
       audio.play().finally(() => setIsLoading(false));
-    });
+    }).finally(() => setIsLoading(false));
   }
 
   function toArabicDigits(ayah: Ayah) {
