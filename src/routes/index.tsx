@@ -181,7 +181,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   function selectReader(i: number) {
     setCurrentReader(i);
     if (window.innerWidth <= 900) setDrawerOpen(null);
-    selectSurah(currentSurah()
+    selectSurah(currentSurah());
   }
 
   function togglePlay() {
