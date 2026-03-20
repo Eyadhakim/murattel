@@ -154,6 +154,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   function playSurah(index: number) {
     setIsLoading(true);
     if (isRepeat() && currentSurah() === index) {
+      audio.currentTime = 0;
       audio.play().finally(() => setIsLoading(false));
       return;
     }
