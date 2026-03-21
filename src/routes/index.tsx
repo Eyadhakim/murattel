@@ -154,6 +154,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   function playSurah(index: number) {
     setIsLoading(true);
     if (isRepeat() && currentSurah() === index) {
+      audio.currentTime = 0;
       audio.play().finally(() => setIsLoading(false));
       return;
     }
@@ -163,8 +164,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
     if (!s || !r) return;
     fetchAyat({ surahId: s.id, mushafId: r.mushafId }).then(() => {
       audio.src = r.server + String(s.id).padStart(3, "0") + ".mp3";
-      audio.play().finally(() => setIsLoading(false));
-    });
+      audio.play();
+    }).finally(() => setIsLoading(false));
   }
 
   function toArabicDigits(ayah: Ayah) {
@@ -181,7 +182,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
   function selectReader(i: number) {
     setCurrentReader(i);
     if (window.innerWidth <= 900) setDrawerOpen(null);
-    selectSurah(currentSurah()
+    selectSurah(currentSurah());
   }
 
   function togglePlay() {
