@@ -5,17 +5,6 @@ import { surahs } from "~/constants/surahs";
 import { readers } from "~/constants/readers";
 
 // ── Types ──────────────────────────────────────────────────────────────
-interface Surah {
-  id: number;
-  name: string;
-}
-
-interface Reader {
-  name: string;
-  server: string;
-  readerId: number;
-  mushafId: number;
-}
 
 interface Ayah {
   verse: number;
@@ -430,7 +419,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
 
       <a
         class="menu-item"
-        href="https://github.com/Eyadhakim/murattel/releases/download/MurattelV1.1/Murattel.apk"
+        href="https://github.com/Eyadhakim/murattel/releases/download/MurattelV1.2/Murattel.apk"
         download="Murattel.apk"
         rel="noopener noreferrer"
         target="_blank"
@@ -457,7 +446,6 @@ const [menuOpen, setMenuOpen] = createSignal(false);
             ادعم مُرتّل
           </button>
 
-          {/* Now playing */}currentReader
           <div class="now-playing">
             <div class="surah-name">
               {currentSurahName() ? `سورة ${currentSurahName()}` : "اختر سورة"}
