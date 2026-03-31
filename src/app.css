@@ -385,7 +385,7 @@ button:disabled {
   font-size: clamp(18px, 2.5vw, 26px);
   color: var(--text);
   direction: rtl;
-  max-height: 300px;
+  max-height: 132px;
   overflow-y: scroll;
 }
 .ayah-num {
@@ -460,6 +460,16 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.controls-help {
+  padding: 0 40px 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 20px;
   position: relative;
   z-index: 1;
 }
@@ -842,6 +852,9 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 16px 20px 20px;
     gap: 10px;
   }
+  .controls-help {
+    padding: 0 20px 16px;
+  }
   .volume-row {
     padding: 0 20px 18px;
   }
@@ -990,9 +1003,6 @@ input[type="range"]::-webkit-slider-thumb {
   .ctrl-btn.sm {
     width: 38px;
     height: 38px;
-  }
-  .ayah-text {
-    max-height: 132px;
   }
 }
 

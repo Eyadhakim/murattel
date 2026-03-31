@@ -208,6 +208,13 @@ const [menuOpen, setMenuOpen] = createSignal(false);
     if (isRepeat()) setIsShuffle(false);
   }
 
+  function playbackModeHint() {
+    if (isRepeat()) return "وضع الإعادة مفعّل: سيتم إعادة السورة الحالية تلقائيًا.";
+    if (isShuffle())
+      return "وضع العشوائي مفعّل: سيتم تشغيل سورة عشوائية بعد انتهاء السورة.";
+    return "الزر اليمين: تشغيل عشوائي. الزر اليسار: إعادة السورة الحالية.";
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────
   function fmt(s: number) {
     return (
@@ -500,6 +507,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               class="ctrl-btn sm"
               style={{ color: isShuffle() ? "var(--gold)" : "" }}
               onClick={toggleShuffle}
+              title="تشغيل عشوائي للسور"
+              aria-label="تشغيل عشوائي للسور"
             >
               <svg
                 width="16"
@@ -520,6 +529,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               class="ctrl-btn md"
               onClick={prevSurah}
               disabled={currentSurah() === 0}
+              title="السورة السابقة"
+              aria-label="السورة السابقة"
             >
               <svg
                 width="18"
@@ -538,6 +549,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               class={`play-btn ${isPlaying() ? "playing" : ""}`}
               onClick={togglePlay}
               disabled={isLoading()}
+              title={isPlaying() ? "إيقاف مؤقت" : "تشغيل السورة"}
+              aria-label={isPlaying() ? "إيقاف مؤقت" : "تشغيل السورة"}
             >
               <Switch>
                 <Match when={isLoading()}>
@@ -571,6 +584,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               class="ctrl-btn md"
               onClick={nextSurah}
               disabled={currentSurah() === 113}
+              title="السورة التالية"
+              aria-label="السورة التالية"
             >
               <svg
                 width="18"
@@ -589,6 +604,8 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               class="ctrl-btn sm"
               style={{ color: isRepeat() ? "var(--gold)" : "" }}
               onClick={toggleRepeat}
+              title="إعادة السورة الحالية"
+              aria-label="إعادة السورة الحالية"
             >
               <svg
                 width="16"
@@ -605,6 +622,7 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               </svg>
             </button>
           </div>
+          <div class="controls-help">{playbackModeHint()}</div>
         </main>
       </div>
     </>
