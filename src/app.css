@@ -204,6 +204,47 @@ button:disabled {
   opacity: 1;
 }
 
+/* ── Favorite button ── */
+.fav-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  order: 10;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+.list-item:hover .fav-btn,
+.fav-btn.is-fav {
+  opacity: 1;
+}
+.fav-btn:hover {
+  color: var(--gold-soft);
+  background: var(--gold-dim);
+  transform: scale(1.2);
+}
+.fav-btn.is-fav {
+  color: var(--gold);
+  filter: drop-shadow(0 0 4px rgba(201, 169, 74, 0.5));
+}
+.fav-btn.is-fav:hover {
+  color: var(--gold-soft);
+}
+
+@keyframes fav-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.fav-btn.is-fav svg {
+  animation: fav-pop 0.3s ease;
+}
+
 /* ── main player ── */
 .player-area {
   display: flex;

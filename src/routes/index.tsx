@@ -3,6 +3,12 @@ import { createSignal, onCleanup, For, Switch } from "solid-js";
 import { quran } from "~/constants/quran";
 import { surahs } from "~/constants/surahs";
 import { readers } from "~/constants/readers";
+import {
+  getFavSurahs,
+  toggleFavSurah,
+  getFavReaders,
+  toggleFavReader,
+} from "~/lib/favorites";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -66,14 +72,46 @@ export default function QuranPlayer() {
   const [showDonate, setShowDonate] = createSignal(false);
   const [donateAmount, setDonateAmount] = createSignal("");
   const [copied, setCopied] = createSignal(false);
-const [menuOpen, setMenuOpen] = createSignal(false);
+  const [menuOpen, setMenuOpen] = createSignal(false);
+  const [favSurahs, setFavSurahs] = createSignal<Set<number>>(new Set());
+  const [favReaders, setFavReaders] = createSignal<Set<number>>(new Set());
   const PHONE = "01148048224";
 
-  // derived
-  const filteredSurahs = () =>
-    surahs.filter((s) => s.name.includes(surahFilter())) ?? [];
-  const filteredReaders = () =>
-    readers.filter((r) => r.name.includes(readerFilter())) ?? [];
+  // load favourites on mount (client-only)
+  onMount(() => {
+    setFavSurahs(getFavSurahs());
+    setFavReaders(getFavReaders());
+  });
+
+  // helpers to toggle + update signal
+  function handleToggleFavSurah(id: number, e: MouseEvent) {
+    e.stopPropagation();
+    setFavSurahs(toggleFavSurah(id));
+  }
+  function handleToggleFavReader(id: number, e: MouseEvent) {
+    e.stopPropagation();
+    setFavReaders(toggleFavReader(id));
+  }
+
+  // derived – filter then sort favourites first
+  const filteredSurahs = () => {
+    const filtered = surahs.filter((s) => s.name.includes(surahFilter())) ?? [];
+    const favs = favSurahs();
+    return [...filtered].sort((a, b) => {
+      const aFav = favs.has(a.id) ? 0 : 1;
+      const bFav = favs.has(b.id) ? 0 : 1;
+      return aFav - bFav;
+    });
+  };
+  const filteredReaders = () => {
+    const filtered = readers.filter((r) => r.name.includes(readerFilter())) ?? [];
+    const favs = favReaders();
+    return [...filtered].sort((a, b) => {
+      const aFav = favs.has(a.readerId) ? 0 : 1;
+      const bFav = favs.has(b.readerId) ? 0 : 1;
+      return aFav - bFav;
+    });
+  };
   const currentSurahName = () => surahs[currentSurah()]?.name ?? "";
   const currentReaderName = () => readers[currentReader()]?.name ?? "";
 
@@ -258,6 +296,16 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               >
                 <span class="num">{s.id}</span>
                 <span>{s.name}</span>
+                <button
+                  class={`fav-btn ${favSurahs().has(s.id) ? "is-fav" : ""}`}
+                  onClick={(e) => handleToggleFavSurah(s.id, e)}
+                  title={favSurahs().has(s.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                  aria-label={favSurahs().has(s.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={favSurahs().has(s.id) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </button>
                 <span class="dot" />
               </div>
             )}
@@ -289,6 +337,16 @@ const [menuOpen, setMenuOpen] = createSignal(false);
               >
                 <span class="num">{i() + 1}</span>
                 <span>{r.name}</span>
+                <button
+                  class={`fav-btn ${favReaders().has(r.readerId) ? "is-fav" : ""}`}
+                  onClick={(e) => handleToggleFavReader(r.readerId, e)}
+                  title={favReaders().has(r.readerId) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                  aria-label={favReaders().has(r.readerId) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={favReaders().has(r.readerId) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </button>
                 <span class="dot" />
               </div>
             )}
@@ -320,6 +378,16 @@ const [menuOpen, setMenuOpen] = createSignal(false);
                 >
                   <span class="num">{s.id}</span>
                   <span>{s.name}</span>
+                  <button
+                    class={`fav-btn ${favSurahs().has(s.id) ? "is-fav" : ""}`}
+                    onClick={(e) => handleToggleFavSurah(s.id, e)}
+                    title={favSurahs().has(s.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                    aria-label={favSurahs().has(s.id) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={favSurahs().has(s.id) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
                   <span class="dot" />
                 </div>
               )}
@@ -349,6 +417,16 @@ const [menuOpen, setMenuOpen] = createSignal(false);
                 >
                   <span class="num">{i() + 1}</span>
                   <span>{r.name}</span>
+                  <button
+                    class={`fav-btn ${favReaders().has(r.readerId) ? "is-fav" : ""}`}
+                    onClick={(e) => handleToggleFavReader(r.readerId, e)}
+                    title={favReaders().has(r.readerId) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                    aria-label={favReaders().has(r.readerId) ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={favReaders().has(r.readerId) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
                   <span class="dot" />
                 </div>
               )}
